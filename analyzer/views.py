@@ -272,13 +272,18 @@ def analyze_resume(request, resume_id, job_id):
         }
     )
     
-    # If newly created or status is not completed/processing, start async thread
+    # If newly created or status is not completed/processing, start analysis
     if created or analysis.status in ['PENDING', 'FAILED']:
-        analysis.status = 'PENDING'
-        analysis.save()
-        thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
-        thread.daemon = True
-        thread.start()
+        if getattr(settings, 'IS_SERVERLESS', False):
+            # Run synchronously on serverless to avoid frozen threads
+            process_analysis_async(analysis.id)
+        else:
+            # Run asynchronously on traditional server
+            analysis.status = 'PENDING'
+            analysis.save()
+            thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
+            thread.daemon = True
+            thread.start()
         
     return redirect('analysis_result', analysis_id=analysis.id)
 
@@ -476,10 +481,15 @@ def bulk_upload(request):
                         status='PENDING'
                     )
                     
-                    # Run analysis asynchronously in a background thread
-                    thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
-                    thread.daemon = True
-                    thread.start()
+                    # Run analysis
+                    if getattr(settings, 'IS_SERVERLESS', False):
+                        # Run synchronously on serverless to avoid frozen threads
+                        process_analysis_async(analysis.id)
+                    else:
+                        # Run asynchronously on traditional server
+                        thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
+                        thread.daemon = True
+                        thread.start()
                     
                     analyzed_count += 1
                     
