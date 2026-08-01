@@ -6,23 +6,22 @@ from collections import Counter
 from django.core.files.storage import default_storage
 
 
-def extract_text_from_pdf(file_path):
-    """Extract text from PDF file"""
+def extract_text_from_pdf(file_obj):
+    """Extract text from PDF file object"""
     try:
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
+        pdf_reader = PyPDF2.PdfReader(file_obj)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
         return text
     except Exception as e:
         return f"Error extracting PDF: {str(e)}"
 
 
-def extract_text_from_docx(file_path):
-    """Extract text from DOCX file"""
+def extract_text_from_docx(file_obj):
+    """Extract text from DOCX file object"""
     try:
-        doc = Document(file_path)
+        doc = Document(file_obj)
         text = ""
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
@@ -33,15 +32,20 @@ def extract_text_from_docx(file_path):
 
 def extract_text_from_resume(resume_file):
     """Extract text from resume file based on extension"""
-    file_path = resume_file.path
     file_extension = resume_file.name.lower().split('.')[-1]
     
-    if file_extension == 'pdf':
-        return extract_text_from_pdf(file_path)
-    elif file_extension == 'docx':
-        return extract_text_from_docx(file_path)
-    else:
-        return "Unsupported file format"
+    try:
+        # Open the file context using Django's FieldFile interface, which works
+        # dynamically with both local storage and remote cloud storage (e.g. S3/Cloudinary)
+        with resume_file.open('rb') as file_obj:
+            if file_extension == 'pdf':
+                return extract_text_from_pdf(file_obj)
+            elif file_extension == 'docx':
+                return extract_text_from_docx(file_obj)
+            else:
+                return "Unsupported file format"
+    except Exception as e:
+        return f"Error opening resume file: {str(e)}"
 
 
 def clean_text(text):
