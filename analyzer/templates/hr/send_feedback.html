@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Send Feedback - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h3><i class="fas fa-comment me-2"></i>Send Feedback</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Sending feedback to <strong>{{ analysis.resume.user.get_full_name|default:analysis.resume.user.username|default:analysis.resume.candidate_name }}</strong> 
+                    for the position <strong>{{ analysis.job.title }}</strong>.
+                    {% if not analysis.resume.user %}
+                        <br><small class="text-muted"><i class="fas fa-exclamation-triangle me-1"></i>Note: This candidate does not have an active user account. Feedback will be saved in details but they won't receive platform notifications.</small>
+                    {% endif %}
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="feedback" class="form-label">Feedback Message</label>
+                        <textarea name="feedback" id="feedback" class="form-control" rows="6" required
+                                  placeholder="Provide constructive feedback and suggestions for improvement..."></textarea>
+                        <div class="form-text">This message will be sent to the candidate along with skill improvement suggestions.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-info btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>Send Feedback
+                        </button>
+                        <a href="{% url 'candidate_detail' analysis.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>Auto-Generated Suggestions</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">These suggestions will be automatically included with your feedback:</p>
+                {% if suggestions %}
+                    {% for suggestion in suggestions %}
+                        <div class="alert alert-light">
+                            <i class="fas fa-arrow-right me-2"></i>{{ suggestion }}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-success">No specific suggestions - candidate has excellent skill match!</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar me-2"></i>Analysis Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ analysis.match_score }}%</h4>
+                            <p class="text-muted">Match Score</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-warning">{{ analysis.gap_percentage }}%</h4>
+                            <p class="text-muted">Skill Gap</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <span class="badge bg-{% if analysis.readiness_level == 'HIGHLY_COMPATIBLE' %}success{% elif analysis.readiness_level == 'JOB_READY' %}info{% elif analysis.readiness_level == 'INTERMEDIATE' %}warning{% else %}danger{% endif %} fs-6">
+                                {{ analysis.get_readiness_level_display }}
+                            </span>
+                            <p class="text-muted mt-2">Readiness Level</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

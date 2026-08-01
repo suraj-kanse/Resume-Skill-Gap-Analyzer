@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ job.title }} - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-briefcase me-2"></i>{{ job.title }}</h2>
+    <div>
+        <a href="{% url 'bulk_upload' %}?job_id={{ job.id }}" class="btn btn-success me-2">
+            <i class="fas fa-upload me-1"></i>Bulk Upload
+        </a>
+        <a href="{% url 'job_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Jobs
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Job Description</h5>
+        <p>{{ job.description|linebreaks }}</p>
+        
+        <h5>Required Skills</h5>
+        <p>{{ job.required_skills }}</p>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <p><strong>Posted:</strong> {{ job.created_at|date:"M d, Y H:i" }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Total Candidates:</strong> {{ total_candidates }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if analyses %}
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-users me-2"></i>Candidates ({{ total_candidates }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Match Score</th>
+                            <th>Gap %</th>
+                            <th>Readiness Level</th>
+                            <th>Analysis Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for analysis in analyses %}
+                            <tr>
+                                <td>
+                                    <strong>{{ analysis.resume.user.get_full_name|default:analysis.resume.user.username|default:analysis.resume.candidate_name }}</strong>
+                                    <br><small class="text-muted">{{ analysis.resume.user.email|default:analysis.resume.candidate_email }}</small>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-{% if analysis.match_score >= 80 %}success{% elif analysis.match_score >= 60 %}warning{% else %}danger{% endif %}" 
+                                             style="width: {{ analysis.match_score }}%">
+                                            {{ analysis.match_score }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ analysis.gap_percentage }}%</td>
+                                <td>
+                                    <span class="badge bg-{% if analysis.readiness_level == 'HIGHLY_COMPATIBLE' %}success{% elif analysis.readiness_level == 'JOB_READY' %}info{% elif analysis.readiness_level == 'INTERMEDIATE' %}warning{% else %}danger{% endif %}">
+                                        {{ analysis.get_readiness_level_display }}
+                                    </span>
+                                </td>
+                                <td>{{ analysis.analyzed_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'candidate_detail' analysis.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'accept_candidate' analysis.id %}" class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'reject_candidate' analysis.id %}" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                        <a href="{% url 'send_feedback' analysis.id %}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-comment"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-users fa-4x text-muted mb-4"></i>
+            <h4>No Candidates Yet</h4>
+            <p class="text-muted">No candidates have applied for this position yet. Use bulk upload to analyze resumes against this job.</p>
+            <a href="{% url 'bulk_upload' %}?job_id={{ job.id }}" class="btn btn-success">
+                <i class="fas fa-upload me-2"></i>Upload Resumes
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

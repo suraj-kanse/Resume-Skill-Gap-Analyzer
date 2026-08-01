@@ -126,29 +126,81 @@ def extract_skills_from_text(text):
     return unique_skills
 
 
+def get_skill_synonyms():
+    """Define skill synonyms and variations for better matching"""
+    return {
+        'html': ['html', 'html5'],
+        'css': ['css', 'css3', 'sass', 'scss'],
+        'javascript': ['js', 'javascript', 'ecmascript'],
+        'react': ['react', 'reactjs', 'react.js'],
+        'node': ['node', 'nodejs', 'node.js'],
+        'angular': ['angular', 'angularjs', 'angular.js'],
+        'vue': ['vue', 'vuejs', 'vue.js'],
+        'mongodb': ['mongodb', 'mongo'],
+        'postgresql': ['postgresql', 'postgres'],
+        'sql server': ['sql server', 'mssql', 'microsoft sql server'],
+        'aws': ['aws', 'amazon web services'],
+        'gcp': ['gcp', 'google cloud', 'google cloud platform'],
+        'azure': ['azure', 'microsoft azure'],
+        'kubernetes': ['kubernetes', 'k8s'],
+        'golang': ['go', 'golang'],
+        'machine learning': ['machine learning', 'ml'],
+        'artificial intelligence': ['artificial intelligence', 'ai'],
+        'django': ['django', 'django framework'],
+        'flask': ['flask', 'flask framework'],
+        'fastapi': ['fastapi', 'fastapi framework'],
+        'spring boot': ['spring boot', 'spring'],
+        'git': ['git', 'github', 'gitlab'],
+        'ci/cd': ['ci/cd', 'continuous integration', 'continuous delivery', 'continuous deployment'],
+        'docker': ['docker', 'docker containerization'],
+        'rest api': ['rest api', 'restful api', 'rest apis'],
+        'nlp': ['nlp', 'natural language processing'],
+        'ui/ux': ['ui/ux', 'ui', 'ux', 'user interface', 'user experience'],
+        'devops': ['devops', 'site reliability engineering', 'sre']
+    }
+
+
+def normalize_skill(skill):
+    """Normalize skill name to its canonical form"""
+    skill_lower = skill.lower().strip()
+    synonyms = get_skill_synonyms()
+    
+    # Check if skill matches any synonym group
+    for canonical, variations in synonyms.items():
+        if skill_lower in [v.lower() for v in variations]:
+            return canonical  # Return canonical form
+    
+    return skill_lower  # Return as-is if no synonym found
+
+
+def skills_match(skill1, skill2):
+    """Check if two skills match (considering synonyms)"""
+    norm1 = normalize_skill(skill1)
+    norm2 = normalize_skill(skill2)
+    
+    # Direct match after normalization
+    if norm1 == norm2:
+        return True
+        
+    return False
+
+
 def calculate_skill_match(resume_skills, job_skills):
     """Calculate skill match between resume and job requirements"""
-    resume_skills_lower = [skill.lower().strip() for skill in resume_skills]
-    job_skills_lower = [skill.lower().strip() for skill in job_skills]
-    
     matched_skills = []
     missing_skills = []
     
-    for job_skill in job_skills_lower:
-        if job_skill in resume_skills_lower:
-            # Find the original case skill
-            for resume_skill in resume_skills:
-                if resume_skill.lower().strip() == job_skill:
-                    matched_skills.append(resume_skill)
-                    break
-        else:
-            # Find the original case skill from job requirements
-            for original_job_skill in job_skills:
-                if original_job_skill.lower().strip() == job_skill:
-                    missing_skills.append(original_job_skill)
-                    break
-    
-    total_job_skills = len(job_skills_lower)
+    for original_job_skill in job_skills:
+        matched = False
+        for resume_skill in resume_skills:
+            if skills_match(resume_skill, original_job_skill):
+                matched_skills.append(original_job_skill)
+                matched = True
+                break
+        if not matched:
+            missing_skills.append(original_job_skill)
+            
+    total_job_skills = len(job_skills)
     matched_count = len(matched_skills)
     
     if total_job_skills == 0:

@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Job List - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-briefcase me-2"></i>My Job Postings</h2>
+    <a href="{% url 'create_job' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Create New Job
+    </a>
+</div>
+
+{% if page_obj %}
+    <div class="row">
+        {% for job in page_obj %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ job.title }}</h5>
+                        <p class="card-text">{{ job.description|truncatechars:150 }}</p>
+                        <p class="text-muted">
+                            <strong>Required Skills:</strong> {{ job.required_skills|truncatechars:100 }}
+                        </p>
+                        <p class="text-muted">
+                            <small><i class="fas fa-calendar me-1"></i>Created: {{ job.created_at|date:"M d, Y" }}</small>
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'job_detail' job.id %}" class="btn btn-primary">
+                                <i class="fas fa-eye me-1"></i>View Details
+                            </a>
+                            <span class="badge bg-info">
+                                {{ job.skillanalysis_set.count }} Candidates
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Job pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-briefcase fa-4x text-muted mb-4"></i>
+            <h4>No Job Postings</h4>
+            <p class="text-muted">Create your first job posting to start receiving candidate applications.</p>
+            <a href="{% url 'create_job' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Job
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

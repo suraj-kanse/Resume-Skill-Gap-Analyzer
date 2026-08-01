@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Filter Resumes - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-filter me-2"></i>Filter & Search Resumes</h2>
+    <span class="badge bg-primary">{{ total_results }} Results</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-search me-2"></i>Search Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="{{ form.min_match_score.id_for_label }}" class="form-label">Min Match Score</label>
+                {{ form.min_match_score }}
+            </div>
+            <div class="col-md-3">
+                <label for="{{ form.max_gap_percentage.id_for_label }}" class="form-label">Max Gap %</label>
+                {{ form.max_gap_percentage }}
+            </div>
+            <div class="col-md-3">
+                <label for="{{ form.readiness_level.id_for_label }}" class="form-label">Readiness Level</label>
+                {{ form.readiness_level }}
+            </div>
+            <div class="col-md-3">
+                <label for="{{ form.job.id_for_label }}" class="form-label">Job Position</label>
+                {{ form.job }}
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-search me-1"></i>Apply Filters
+                </button>
+                <a href="{% url 'filter_resumes' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i>Clear Filters
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if page_obj %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Job Position</th>
+                            <th>Match Score</th>
+                            <th>Gap %</th>
+                            <th>Readiness Level</th>
+                            <th>Analysis Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for analysis in page_obj %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle bg-primary text-white me-2">
+                                            {{ analysis.resume.user.first_name|first|default:analysis.resume.user.username|first|default:analysis.resume.candidate_name|first }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ analysis.resume.user.get_full_name|default:analysis.resume.user.username|default:analysis.resume.candidate_name }}</strong>
+                                            <br><small class="text-muted">{{ analysis.resume.user.email|default:analysis.resume.candidate_email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>{{ analysis.job.title }}</strong>
+                                    <br><small class="text-muted">{{ analysis.job.created_at|date:"M d, Y" }}</small>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-{% if analysis.match_score >= 80 %}success{% elif analysis.match_score >= 60 %}warning{% else %}danger{% endif %}" 
+                                             style="width: {{ analysis.match_score }}%">
+                                            {{ analysis.match_score }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if analysis.gap_percentage <= 20 %}success{% elif analysis.gap_percentage <= 40 %}warning{% else %}danger{% endif %}">
+                                        {{ analysis.gap_percentage }}%
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if analysis.readiness_level == 'HIGHLY_COMPATIBLE' %}success{% elif analysis.readiness_level == 'JOB_READY' %}info{% elif analysis.readiness_level == 'INTERMEDIATE' %}warning{% else %}danger{% endif %}">
+                                        {{ analysis.get_readiness_level_display }}
+                                    </span>
+                                </td>
+                                <td>{{ analysis.analyzed_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'candidate_detail' analysis.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'accept_candidate' analysis.id %}" class="btn btn-sm btn-outline-success" title="Accept">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'reject_candidate' analysis.id %}" class="btn btn-sm btn-outline-danger" title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                        <a href="{% url 'send_feedback' analysis.id %}" class="btn btn-sm btn-outline-info" title="Send Feedback">
+                                            <i class="fas fa-comment"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Resume pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-search fa-4x text-muted mb-4"></i>
+            <h4>No Results Found</h4>
+            <p class="text-muted">No resumes match your current filter criteria. Try adjusting your filters or upload more resumes.</p>
+            <a href="{% url 'bulk_upload' %}" class="btn btn-success">
+                <i class="fas fa-upload me-2"></i>Upload Resumes
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

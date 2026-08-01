@@ -13,6 +13,8 @@ from django.contrib.auth.models import User
 import json
 import os
 import re
+import threading
+from django.db import connection
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -27,6 +29,49 @@ from .utils import (
     determine_readiness_level, parse_skills_from_string, format_skills_list,
     get_skill_suggestions
 )
+
+
+def process_analysis_async(analysis_id):
+    """Run resume text extraction and skill analysis in a background thread"""
+    try:
+        analysis = SkillAnalysis.objects.get(id=analysis_id)
+        analysis.status = 'PROCESSING'
+        analysis.save()
+        
+        resume = analysis.resume
+        # Extract text from resume if not already done
+        if not resume.extracted_text:
+            extracted_text = extract_text_from_resume(resume.resume_file)
+            resume.extracted_text = extracted_text
+            resume.save()
+            
+        resume_skills = extract_skills_from_text(resume.extracted_text)
+        job_skills = parse_skills_from_string(analysis.job.required_skills)
+        
+        match_result = calculate_skill_match(resume_skills, job_skills)
+        
+        analysis.matched_skills = format_skills_list(match_result['matched_skills'])
+        analysis.missing_skills = format_skills_list(match_result['missing_skills'])
+        analysis.gap_percentage = match_result['gap_percentage']
+        analysis.match_score = match_result['match_score']
+        analysis.readiness_level = determine_readiness_level(match_result['match_score'])
+        analysis.status = 'COMPLETED'
+        analysis.save()
+    except Exception as e:
+        try:
+            analysis = SkillAnalysis.objects.get(id=analysis_id)
+            analysis.status = 'FAILED'
+            # fallback defaults
+            analysis.matched_skills = ''
+            analysis.missing_skills = analysis.job.required_skills
+            analysis.gap_percentage = 100
+            analysis.match_score = 0
+            analysis.readiness_level = 'BEGINNER'
+            analysis.save()
+        except:
+            pass
+    finally:
+        connection.close()
 
 
 def home(request):
@@ -190,9 +235,29 @@ def upload_resume(request):
 @login_required
 def analyze_resume(request, resume_id, job_id):
     """Analyze resume against job requirements"""
-    resume = get_object_or_404(Resume, id=resume_id, user=request.user)
+    resume = get_object_or_404(Resume, id=resume_id)
     job = get_object_or_404(Job, id=job_id)
     
+    # Check permissions
+    if resume.user and resume.user != request.user:
+        try:
+            profile = request.user.userprofile
+            if profile.role != 'HR' or job.hr != request.user:
+                messages.error(request, 'Access denied.')
+                return redirect('dashboard')
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'Access denied.')
+            return redirect('dashboard')
+    elif not resume.user:
+        try:
+            profile = request.user.userprofile
+            if profile.role != 'HR' or job.hr != request.user:
+                messages.error(request, 'Access denied.')
+                return redirect('dashboard')
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'Access denied.')
+            return redirect('dashboard')
+            
     # Check if analysis already exists
     analysis, created = SkillAnalysis.objects.get_or_create(
         resume=resume,
@@ -202,48 +267,19 @@ def analyze_resume(request, resume_id, job_id):
             'missing_skills': '',
             'gap_percentage': 0,
             'match_score': 0,
-            'readiness_level': 'BEGINNER'
+            'readiness_level': 'BEGINNER',
+            'status': 'PENDING'
         }
     )
     
-    if created or not analysis.matched_skills:
-        try:
-            # Extract skills from resume
-            if resume.extracted_text:
-                resume_skills = extract_skills_from_text(resume.extracted_text)
-            else:
-                # If no extracted text, try to extract it now
-                extracted_text = extract_text_from_resume(resume.resume_file)
-                resume.extracted_text = extracted_text
-                resume.save()
-                resume_skills = extract_skills_from_text(extracted_text)
-            
-            # Parse job skills
-            job_skills = parse_skills_from_string(job.required_skills)
-            
-            # Calculate match
-            match_result = calculate_skill_match(resume_skills, job_skills)
-            
-            # Update analysis
-            analysis.matched_skills = format_skills_list(match_result['matched_skills'])
-            analysis.missing_skills = format_skills_list(match_result['missing_skills'])
-            analysis.gap_percentage = match_result['gap_percentage']
-            analysis.match_score = match_result['match_score']
-            analysis.readiness_level = determine_readiness_level(match_result['match_score'])
-            analysis.save()
-            
-            messages.success(request, 'Resume analysis completed successfully!')
-            
-        except Exception as e:
-            messages.error(request, f'Error during analysis: {str(e)}')
-            # Set default values if analysis fails
-            analysis.matched_skills = ''
-            analysis.missing_skills = job.required_skills
-            analysis.gap_percentage = 100
-            analysis.match_score = 0
-            analysis.readiness_level = 'BEGINNER'
-            analysis.save()
-    
+    # If newly created or status is not completed/processing, start async thread
+    if created or analysis.status in ['PENDING', 'FAILED']:
+        analysis.status = 'PENDING'
+        analysis.save()
+        thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
+        thread.daemon = True
+        thread.start()
+        
     return redirect('analysis_result', analysis_id=analysis.id)
 
 
@@ -413,54 +449,44 @@ def bulk_upload(request):
             
             for file in files:
                 try:
-                    # Create a temporary user for the resume
-                    temp_username = f"candidate_{file.name.split('.')[0]}_{job.id}"
-                    temp_user, created = User.objects.get_or_create(
-                        username=temp_username,
-                        defaults={
-                            'email': f"{temp_username}@temp.com",
-                            'first_name': 'Candidate',
-                            'last_name': file.name.split('.')[0]
-                        }
-                    )
-                    
-                    if created:
-                        UserProfile.objects.create(user=temp_user, role='USER')
+                    # Clean filename to get candidate name
+                    base_name = os.path.splitext(file.name)[0]
+                    candidate_name = base_name.replace('_', ' ').replace('-', ' ').title()
+                    candidate_email = f"{base_name.lower()}@example.com"
                     
                     # Create resume
                     resume = Resume.objects.create(
-                        user=temp_user,
+                        user=None,
+                        candidate_name=candidate_name,
+                        candidate_email=candidate_email,
                         resume_file=file
                     )
                     
-                    # Extract text
-                    extracted_text = extract_text_from_resume(resume.resume_file)
-                    resume.extracted_text = extracted_text
-                    resume.save()
-                    
                     uploaded_count += 1
                     
-                    # Analyze resume
-                    resume_skills = extract_skills_from_text(extracted_text)
-                    job_skills = parse_skills_from_string(job.required_skills)
-                    match_result = calculate_skill_match(resume_skills, job_skills)
-                    
-                    SkillAnalysis.objects.create(
+                    # Create analysis record as PENDING
+                    analysis = SkillAnalysis.objects.create(
                         resume=resume,
                         job=job,
-                        matched_skills=format_skills_list(match_result['matched_skills']),
-                        missing_skills=format_skills_list(match_result['missing_skills']),
-                        gap_percentage=match_result['gap_percentage'],
-                        match_score=match_result['match_score'],
-                        readiness_level=determine_readiness_level(match_result['match_score'])
+                        matched_skills='',
+                        missing_skills='',
+                        gap_percentage=0,
+                        match_score=0,
+                        readiness_level='BEGINNER',
+                        status='PENDING'
                     )
+                    
+                    # Run analysis asynchronously in a background thread
+                    thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
+                    thread.daemon = True
+                    thread.start()
                     
                     analyzed_count += 1
                     
                 except Exception as e:
                     messages.warning(request, f'Error processing {file.name}: {str(e)}')
             
-            messages.success(request, f'Successfully uploaded {uploaded_count} resumes and analyzed {analyzed_count}.')
+            messages.success(request, f'Successfully uploaded {uploaded_count} resumes and started analysis for {analyzed_count}.')
             return redirect('job_detail', job_id=job.id)
     else:
         form = BulkResumeUploadForm()
@@ -551,14 +577,17 @@ def accept_candidate(request, analysis_id):
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
     
-    # Create notification
-    message = f"Congratulations! Your resume has been accepted for the position: {analysis.job.title}"
-    Notification.objects.create(
-        user=analysis.resume.user,
-        message=message
-    )
+    candidate_name = (analysis.resume.user.get_full_name() or analysis.resume.user.username) if analysis.resume.user else (analysis.resume.candidate_name or "Anonymous")
     
-    messages.success(request, 'Candidate accepted and notified.')
+    # Create notification if candidate has a user account
+    if analysis.resume.user:
+        message = f"Congratulations! Your resume has been accepted for the position: {analysis.job.title}"
+        Notification.objects.create(
+            user=analysis.resume.user,
+            message=message
+        )
+    
+    messages.success(request, f'Candidate {candidate_name} accepted.')
     return redirect('candidate_detail', analysis_id=analysis_id)
 
 
@@ -576,20 +605,23 @@ def reject_candidate(request, analysis_id):
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
     
+    candidate_name = (analysis.resume.user.get_full_name() or analysis.resume.user.username) if analysis.resume.user else (analysis.resume.candidate_name or "Anonymous")
+    
     if request.method == 'POST':
         feedback = request.POST.get('feedback', '')
         
-        # Create notification
-        message = f"Your resume for the position '{analysis.job.title}' was not selected. "
-        if feedback:
-            message += f"Feedback: {feedback}"
+        # Create notification if candidate has a user account
+        if analysis.resume.user:
+            message = f"Your resume for the position '{analysis.job.title}' was not selected. "
+            if feedback:
+                message += f"Feedback: {feedback}"
+            
+            Notification.objects.create(
+                user=analysis.resume.user,
+                message=message
+            )
         
-        Notification.objects.create(
-            user=analysis.resume.user,
-            message=message
-        )
-        
-        messages.success(request, 'Candidate rejected and notified.')
+        messages.success(request, f'Candidate {candidate_name} rejected.')
         return redirect('candidate_detail', analysis_id=analysis_id)
     
     return render(request, 'hr/reject_candidate.html', {'analysis': analysis})
@@ -609,27 +641,30 @@ def send_feedback(request, analysis_id):
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
     
+    candidate_name = (analysis.resume.user.get_full_name() or analysis.resume.user.username) if analysis.resume.user else (analysis.resume.candidate_name or "Anonymous")
+    
     if request.method == 'POST':
         feedback = request.POST.get('feedback', '')
         
         if feedback:
-            missing_skills = parse_skills_from_string(analysis.missing_skills)
-            matched_skills = parse_skills_from_string(analysis.matched_skills)
-            suggestions = get_skill_suggestions(missing_skills, matched_skills)
+            if analysis.resume.user:
+                missing_skills = parse_skills_from_string(analysis.missing_skills)
+                matched_skills = parse_skills_from_string(analysis.matched_skills)
+                suggestions = get_skill_suggestions(missing_skills, matched_skills)
+                
+                message = f"Feedback for your application to '{analysis.job.title}': {feedback}\n\n"
+                message += "Skill Improvement Suggestions:\n"
+                for suggestion in suggestions:
+                    message += f"• {suggestion}\n"
+                
+                Notification.objects.create(
+                    user=analysis.resume.user,
+                    message=message
+                )
             
-            message = f"Feedback for your application to '{analysis.job.title}': {feedback}\n\n"
-            message += "Skill Improvement Suggestions:\n"
-            for suggestion in suggestions:
-                message += f"• {suggestion}\n"
-            
-            Notification.objects.create(
-                user=analysis.resume.user,
-                message=message
-            )
-            
-            messages.success(request, 'Feedback sent to candidate.')
+            messages.success(request, f'Feedback sent to candidate {candidate_name}.')
             return redirect('candidate_detail', analysis_id=analysis_id)
-    
+            
     missing_skills = parse_skills_from_string(analysis.missing_skills)
     matched_skills = parse_skills_from_string(analysis.matched_skills)
     suggestions = get_skill_suggestions(missing_skills, matched_skills)
@@ -714,9 +749,11 @@ def export_analysis(request, analysis_id, format):
             messages.error(request, 'Access denied.')
             return redirect('dashboard')
     
+    candidate_name = (analysis.resume.user.get_full_name() or analysis.resume.user.username) if analysis.resume.user else (analysis.resume.candidate_name or "Anonymous")
+
     if format == 'json':
         data = {
-            'candidate': analysis.resume.user.get_full_name() or analysis.resume.user.username,
+            'candidate': candidate_name,
             'job_title': analysis.job.title,
             'match_score': analysis.match_score,
             'gap_percentage': analysis.gap_percentage,
@@ -753,7 +790,7 @@ def export_analysis(request, analysis_id, format):
         
         # Basic info
         info_data = [
-            ['Candidate:', analysis.resume.user.get_full_name() or analysis.resume.user.username],
+            ['Candidate:', candidate_name],
             ['Job Title:', analysis.job.title],
             ['Match Score:', f"{analysis.match_score}%"],
             ['Gap Percentage:', f"{analysis.gap_percentage}%"],
@@ -818,9 +855,35 @@ def available_jobs(request):
 
 @login_required
 def get_jobs(request):
-    """AJAX endpoint to get jobs"""
-    jobs = Job.objects.all().values('id', 'title', 'hr__username')
-    return JsonResponse({'jobs': list(jobs)})
+    """AJAX endpoint to get jobs (paginated with search support)"""
+    search_query = request.GET.get('search', '')
+    try:
+        page = int(request.GET.get('page', 1))
+        limit = int(request.GET.get('limit', 10))
+    except ValueError:
+        page = 1
+        limit = 10
+    
+    jobs = Job.objects.all().order_by('-created_at')
+    if search_query:
+        jobs = jobs.filter(Q(title__icontains=search_query) | Q(description__icontains=search_query))
+        
+    paginator = Paginator(jobs, limit)
+    try:
+        jobs_page = paginator.page(page)
+    except Exception:
+        jobs_page = []
+        
+    jobs_list = []
+    if jobs_page:
+        jobs_list = list(jobs_page.object_list.values('id', 'title', 'hr__username'))
+        
+    return JsonResponse({
+        'jobs': jobs_list,
+        'has_next': jobs_page.has_next() if jobs_page else False,
+        'total_pages': paginator.num_pages,
+        'current_page': page
+    })
 
 
 @csrf_exempt
@@ -928,3 +991,33 @@ def candidate_view(request):
     }
     
     return render(request, 'user/dashboard.html', context)
+
+
+@login_required
+def check_analysis_status(request, analysis_id):
+    """AJAX endpoint to check the status of a skill analysis"""
+    analysis = get_object_or_404(SkillAnalysis, id=analysis_id)
+    
+    # Check permissions
+    if analysis.resume.user:
+        if analysis.resume.user != request.user:
+            try:
+                profile = request.user.userprofile
+                if profile.role != 'HR' or analysis.job.hr != request.user:
+                    return JsonResponse({'error': 'Access denied'}, status=403)
+            except UserProfile.DoesNotExist:
+                return JsonResponse({'error': 'Access denied'}, status=403)
+    else:
+        try:
+            profile = request.user.userprofile
+            if profile.role != 'HR' or analysis.job.hr != request.user:
+                return JsonResponse({'error': 'Access denied'}, status=403)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+            
+    return JsonResponse({
+        'status': analysis.status,
+        'match_score': analysis.match_score,
+        'gap_percentage': analysis.gap_percentage,
+        'readiness_level': analysis.get_readiness_level_display()
+    })

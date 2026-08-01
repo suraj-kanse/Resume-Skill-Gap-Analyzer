@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Candidate Detail - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-user me-2"></i>{{ analysis.resume.user.get_full_name|default:analysis.resume.user.username|default:analysis.resume.candidate_name }}</h2>
+    <div>
+        <a href="{% url 'export_analysis' analysis.id 'pdf' %}" class="btn btn-outline-danger me-2">
+            <i class="fas fa-file-pdf me-1"></i>PDF
+        </a>
+        <a href="{% url 'export_analysis' analysis.id 'json' %}" class="btn btn-outline-info">
+            <i class="fas fa-file-code me-1"></i>JSON
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ analysis.match_score }}%</h3>
+                <p class="mb-0">Match Score</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ analysis.gap_percentage }}%</h3>
+                <p class="mb-0">Skill Gap</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-{% if analysis.readiness_level == 'HIGHLY_COMPATIBLE' %}success{% elif analysis.readiness_level == 'JOB_READY' %}info{% elif analysis.readiness_level == 'INTERMEDIATE' %}warning{% else %}danger{% endif %} text-white">
+            <div class="card-body text-center">
+                <h6>{{ analysis.get_readiness_level_display }}</h6>
+                <p class="mb-0">Readiness Level</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6>{{ matched_skills|length }}</h6>
+                <p class="mb-0">Skills Matched</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user me-2"></i>Candidate Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ analysis.resume.user.get_full_name|default:analysis.resume.user.username|default:analysis.resume.candidate_name }}</p>
+                <p><strong>Email:</strong> {{ analysis.resume.user.email|default:analysis.resume.candidate_email }}</p>
+                <p><strong>Resume Uploaded:</strong> {{ analysis.resume.uploaded_at|date:"M d, Y H:i" }}</p>
+                <p><strong>Analysis Date:</strong> {{ analysis.analyzed_at|date:"M d, Y H:i" }}</p>
+                <a href="{{ analysis.resume.resume_file.url }}" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-download me-1"></i>Download Resume
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-briefcase me-2"></i>Job Position</h5>
+            </div>
+            <div class="card-body">
+                <h6>{{ analysis.job.title }}</h6>
+                <p>{{ analysis.job.description|truncatechars:200 }}</p>
+                <p><strong>Posted by:</strong> {{ analysis.job.hr.get_full_name|default:analysis.job.hr.username }}</p>
+                <p><strong>Posted on:</strong> {{ analysis.job.created_at|date:"M d, Y" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-check-circle me-2"></i>Matched Skills ({{ matched_skills|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if matched_skills %}
+                    {% for skill in matched_skills %}
+                        <span class="badge bg-success me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No matching skills found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-times-circle me-2"></i>Missing Skills ({{ missing_skills|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if missing_skills %}
+                    {% for skill in missing_skills %}
+                        <span class="badge bg-danger me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-success">Congratulations! Candidate has all required skills.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if suggestions %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5><i class="fas fa-lightbulb me-2"></i>Improvement Suggestions</h5>
+    </div>
+    <div class="card-body">
+        {% for suggestion in suggestions %}
+            <div class="alert alert-info">
+                <i class="fas fa-arrow-right me-2"></i>{{ suggestion }}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h5><i class="fas fa-cogs me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'accept_candidate' analysis.id %}" class="btn btn-success w-100">
+                    <i class="fas fa-check me-2"></i>Accept Candidate
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'reject_candidate' analysis.id %}" class="btn btn-danger w-100">
+                    <i class="fas fa-times me-2"></i>Reject Candidate
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'send_feedback' analysis.id %}" class="btn btn-info w-100">
+                    <i class="fas fa-comment me-2"></i>Send Feedback
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'filter_resumes' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

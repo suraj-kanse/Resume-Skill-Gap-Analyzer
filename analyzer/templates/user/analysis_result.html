@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Analysis Result - Resume Analyzer{% endblock %}
+
+{% block content %}
+{% if analysis.status == 'PENDING' or analysis.status == 'PROCESSING' %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-lg p-5 border-0 rounded-4" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+                <div class="card-body">
+                    <div class="spinner-border text-primary mb-4" role="status" style="width: 4rem; height: 4rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-2">Analyzing Resume...</h3>
+                    <p class="text-muted fs-5 mb-4">We are extracting skills and evaluating the gap against job requirements.</p>
+                    <div class="progress mb-3" style="height: 10px; border-radius: 5px;">
+                        <div id="analysis-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 10%;" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <span id="analysis-status-badge" class="badge bg-secondary p-2 px-3 fs-6">Status: {{ analysis.get_status_display }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const progressBar = document.getElementById("analysis-progress-bar");
+        const statusBadge = document.getElementById("analysis-status-badge");
+        const analysisId = "{{ analysis.id }}";
+        
+        let progress = 10;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += 5;
+                progressBar.style.width = progress + "%";
+                progressBar.setAttribute("aria-valuenow", progress);
+            }
+        }, 1000);
+
+        function checkStatus() {
+            fetch(`/analysis-status/${analysisId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'COMPLETED') {
+                        clearInterval(progressInterval);
+                        progressBar.style.width = "100%";
+                        progressBar.classList.remove("progress-bar-striped", "progress-bar-animated");
+                        progressBar.classList.add("bg-success");
+                        statusBadge.textContent = "Status: Completed";
+                        statusBadge.classList.replace("bg-secondary", "bg-success");
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else if (data.status === 'FAILED') {
+                        clearInterval(progressInterval);
+                        progressBar.style.width = "100%";
+                        progressBar.classList.remove("progress-bar-striped", "progress-bar-animated");
+                        progressBar.classList.add("bg-danger");
+                        statusBadge.textContent = "Status: Failed";
+                        statusBadge.classList.replace("bg-secondary", "bg-danger");
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        if (data.status === 'PROCESSING') {
+                            statusBadge.textContent = "Status: Processing text & skills...";
+                            statusBadge.classList.remove("bg-secondary");
+                            statusBadge.classList.add("bg-primary");
+                        }
+                        // Check again in 2 seconds
+                        setTimeout(checkStatus, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking status:", error);
+                    setTimeout(checkStatus, 3000);
+                });
+        }
+
+        // Start polling
+        setTimeout(checkStatus, 1500);
+    });
+</script>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-chart-line me-2"></i>Skill Gap Analysis</h2>
+    <div>
+        <a href="{% url 'export_analysis' analysis.id 'pdf' %}" class="btn btn-outline-danger me-2">
+            <i class="fas fa-file-pdf me-1"></i>PDF
+        </a>
+        <a href="{% url 'export_analysis' analysis.id 'json' %}" class="btn btn-outline-info">
+            <i class="fas fa-file-code me-1"></i>JSON
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ analysis.match_score }}%</h3>
+                <p class="mb-0">Match Score</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ analysis.gap_percentage }}%</h3>
+                <p class="mb-0">Skill Gap</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-{% if analysis.readiness_level == 'HIGHLY_COMPATIBLE' %}success{% elif analysis.readiness_level == 'JOB_READY' %}info{% elif analysis.readiness_level == 'INTERMEDIATE' %}warning{% else %}danger{% endif %} text-white">
+            <div class="card-body text-center">
+                <h6>{{ analysis.get_readiness_level_display }}</h6>
+                <p class="mb-0">Readiness Level</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6>{{ matched_skills|length }}</h6>
+                <p class="mb-0">Skills Matched</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-briefcase me-2"></i>Job Details</h5>
+    </div>
+    <div class="card-body">
+        <h6>{{ analysis.job.title }}</h6>
+        <p>{{ analysis.job.description }}</p>
+        <p><strong>Posted by:</strong> {{ analysis.job.hr.get_full_name|default:analysis.job.hr.username }}</p>
+        <p><strong>Date:</strong> {{ analysis.job.created_at|date:"M d, Y" }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-check-circle me-2"></i>Matched Skills ({{ matched_skills|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if matched_skills %}
+                    {% for skill in matched_skills %}
+                        <span class="badge bg-success me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No matching skills found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-times-circle me-2"></i>Missing Skills ({{ missing_skills|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if missing_skills %}
+                    {% for skill in missing_skills %}
+                        <span class="badge bg-danger me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-success">Congratulations! You have all required skills.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if suggestions %}
+<div class="card mt-4">
+    <div class="card-header bg-info text-white">
+        <h5><i class="fas fa-lightbulb me-2"></i>Improvement Suggestions</h5>
+    </div>
+    <div class="card-body">
+        {% for suggestion in suggestions %}
+            <div class="alert alert-info">
+                <i class="fas fa-arrow-right me-2"></i>{{ suggestion }}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="text-center mt-4">
+    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+{% endif %}
+{% endblock %}

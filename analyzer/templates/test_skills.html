@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Skills - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Skill Extraction Test</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Sample Text</h5>
+        </div>
+        <div class="card-body">
+            <pre>{{ sample_text }}</pre>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5>Extracted Skills ({{ extracted_skills|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% for skill in extracted_skills %}
+                        <span class="badge bg-success me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>Job Requirements</h5>
+                </div>
+                <div class="card-body">
+                    {% for skill in job_skills %}
+                        <span class="badge bg-primary me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5>Matched Skills ({{ match_result.matched_skills|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% for skill in match_result.matched_skills %}
+                        <span class="badge bg-success me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5>Missing Skills ({{ match_result.missing_skills|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% for skill in match_result.missing_skills %}
+                        <span class="badge bg-danger me-2 mb-2">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Analysis Results</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Match Score:</strong> {{ match_result.match_score }}%</p>
+                    <p><strong>Gap Percentage:</strong> {{ match_result.gap_percentage }}%</p>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" style="width: {{ match_result.match_score }}%">
+                            {{ match_result.match_score }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

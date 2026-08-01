@@ -55,7 +55,7 @@ pip install -r requirements.txt
 ### 4. MySQL Database Setup
 ```sql
 CREATE DATABASE resume_skill_gap;
-CREATE USER 'resume_user'@'localhost' IDENTIFIED BY 'your_password';
+CREATE USER 'resume_user'@'localhost' IDENTIFIED BY 'CoffeeScreen@123';
 GRANT ALL PRIVILEGES ON resume_skill_gap.* TO 'resume_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
@@ -252,149 +252,12 @@ For support and questions:
 
 ## 🔄 Version History
 
-- **v2.0.0** (January 2026): Major Enhancement Release
-  - ✅ **Intelligent Skill Matching**: HTML/HTML5, CSS/CSS3, JS/JavaScript synonyms
-  - ✅ **Expanded Skill Database**: 200+ skills across 13 categories (was 115 in 5 categories)
-  - ✅ **Professional Notifications**: Enterprise-grade acceptance/rejection messages
-  - ✅ **Enhanced UX**: Improved message visibility with animations
-  - ✅ **Better Suggestions**: Categorized, actionable skill recommendations
-  - ✅ **25+ Synonym Groups**: Intelligent matching for skill variations
-  - ✅ **Zero Breaking Changes**: Fully backward compatible
-
 - **v1.0.0**: Initial release with core functionality
-  - Full skill gap analysis
-  - HR screening capabilities
-  - Analytics dashboard
-  - Export functionality
-
-## 📚 Recent Improvements (v2.0.0)
-
-### 🎯 Key Enhancements
-
-#### 1. Intelligent Skill Matching
-**Problem Solved:** Resume with "HTML" now matches job requiring "HTML5"
-
-**Supported Synonyms:**
-- HTML ↔ HTML5
-- CSS ↔ CSS3
-- JavaScript ↔ JS ↔ ECMAScript
-- React ↔ ReactJS ↔ React.js
-- Node ↔ NodeJS ↔ Node.js
-- And 20+ more synonym groups
-
-**Impact:** 40% improvement in match accuracy, 80% reduction in false negatives
-
-#### 2. Expanded Skill Database
-**Before:** 115 skills in 5 categories
-**After:** 200+ skills in 13 categories
-
-**New Categories:**
-- Web Technologies (HTML5, CSS3, SASS, etc.)
-- Cloud Platforms (AWS, Azure, GCP)
-- DevOps Tools (Docker, Kubernetes, Jenkins)
-- Build Tools (Webpack, Gulp, Grunt)
-- Testing (Jest, Pytest, Selenium)
-- Project Management (Jira, Agile, Scrum)
-- Design Tools (Figma, Sketch, Adobe XD)
-- API Tools (Postman, Swagger, REST API)
-- Data Science (ML, AI, TensorFlow, PyTorch)
-
-#### 3. Professional Notifications
-**Enhanced Features:**
-- Structured acceptance messages with match scores
-- Constructive rejection feedback with skill recommendations
-- Professional tone and formatting
-- Personalized signatures from HR
-- Emoji indicators for better readability
-
-**Example:**
-```
-🎉 Congratulations! Your application has been accepted.
-Match Score: 85%
-The HR team will contact you soon with next steps.
-
-Best regards,
-John Smith
-```
-
-#### 4. Improved User Experience
-- Messages slide in from top with smooth animation
-- Increased visibility time: 5s → 8s
-- Shimmer effect for important messages
-- Clear success confirmations with checkmarks (✓)
-- Better redirect flow for HR workflow
-
-#### 5. Enhanced Suggestions
-**Before:** Generic, repetitive suggestions
-**After:** Categorized, actionable recommendations
-
-**Features:**
-- Skill-type categorization
-- Priority-based ordering
-- Actionable learning paths
-- Resource recommendations
-- Professional tone with emojis
-
-### 📖 Documentation
-
-Comprehensive guides created:
-- **QUICK_START.md** - Get started immediately
-- **CHANGES_SUMMARY.md** - Quick overview of changes
-- **IMPROVEMENTS.md** - Technical documentation
-- **UPGRADE_GUIDE.md** - Step-by-step upgrade instructions
-- **HTML_HTML5_FIX.md** - Detailed skill matching solution
-- **BEFORE_AFTER_COMPARISON.md** - Visual comparison guide
-
-### 🚀 Upgrade Instructions
-
-**Good News:** All improvements are already applied and backward compatible!
-
-1. **Restart Server:**
-   ```bash
-   python manage.py runserver
-   ```
-
-2. **Clear Browser Cache:**
-   - Press `Ctrl+Shift+Delete` (Windows) or `Cmd+Shift+Delete` (Mac)
-   - Or hard refresh: `Ctrl+F5`
-
-3. **Test:**
-   ```bash
-   python manage.py shell
-   >>> from analyzer.utils import skills_match
-   >>> skills_match('HTML', 'HTML5')
-   True
-   ```
-
-**No database migration needed!** All changes are code-level only.
-
-### 📊 Performance Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Skills | 115 | 200+ | +74% |
-| Categories | 5 | 13 | +160% |
-| Synonym Groups | 0 | 25+ | New Feature |
-| Match Accuracy | ~60% | ~95% | +58% |
-| Message Display | 5s | 8s | +60% |
-| False Negatives | High | Minimal | -80% |
-
-### ✨ What's New in Action
-
-**Test Skill Matching:**
-```python
-# Create job with: HTML5, CSS3, JavaScript, React
-# Upload resume with: HTML, CSS, JS, ReactJS
-# Result: 100% match! (Previously: 0%)
-```
-
-**Test Notifications:**
-1. Login as HR
-2. Accept/Reject a candidate
-3. See professional notification with smooth animation
-4. Candidate receives structured, actionable feedback
+- Full skill gap analysis
+- HR screening capabilities
+- Analytics dashboard
+- Export functionality
 
 ---
 
-**Built with ❤️ using Django and modern web technologies**#   R e s u m e - S k i l l - G a p - A n a l y z e r -  
- 
+**Built with ❤️ using Django and modern web technologies**

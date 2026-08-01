@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Available Jobs - Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-briefcase me-2"></i>Available Jobs</h2>
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
+
+{% if page_obj %}
+    <div class="row">
+        {% for job in page_obj %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ job.title }}</h5>
+                        <p class="card-text">{{ job.description|truncatechars:150 }}</p>
+                        <p class="text-muted">
+                            <strong>Required Skills:</strong> {{ job.required_skills|truncatechars:100 }}
+                        </p>
+                        <p class="text-muted">
+                            <small>
+                                <i class="fas fa-user me-1"></i>Posted by: {{ job.hr.get_full_name|default:job.hr.username }}
+                                <br><i class="fas fa-calendar me-1"></i>{{ job.created_at|date:"M d, Y" }}
+                            </small>
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        {% if user.resume_set.exists %}
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-chart-line me-1"></i>Analyze Resume
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for resume in user.resume_set.all %}
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'analyze_resume' resume.id job.id %}">
+                                                <i class="fas fa-file-alt me-2"></i>{{ resume.resume_file.name|truncatechars:30 }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% else %}
+                            <a href="{% url 'upload_resume' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-upload me-1"></i>Upload Resume First
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Jobs pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-briefcase fa-4x text-muted mb-4"></i>
+            <h4>No Jobs Available</h4>
+            <p class="text-muted">There are no job postings available at the moment. Please check back later.</p>
+            <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

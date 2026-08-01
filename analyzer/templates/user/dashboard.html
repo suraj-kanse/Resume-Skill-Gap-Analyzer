@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Resume Analyzer{% endblock %}
+
+{% block content %}
+{% if is_hr_viewing %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>HR Preview Mode</h5>
+                <a href="{% url 'hr_dashboard' %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-user-tie me-1"></i>Switch to HR Dashboard
+                </a>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>What you're seeing:</strong> This is exactly how candidates experience the platform.</p>
+                <ul class="mb-0">
+                    <li>Candidates can upload resumes and see them listed in "Recent Resumes"</li>
+                    <li>They can analyze their resumes against available job postings</li>
+                    <li>Analysis results show match scores, skill gaps, and improvement suggestions</li>
+                    <li>Candidates receive notifications when HR provides feedback</li>
+                    <li>They can browse all available jobs and choose which ones to apply for</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-tachometer-alt me-2"></i>
+        {% if is_hr_viewing %}Candidate Dashboard (HR Preview){% else %}Candidate Dashboard{% endif %}
+    </h2>
+    {% if is_hr_viewing %}
+    <div>
+        <a href="{% url 'hr_dashboard' %}" class="btn btn-outline-primary me-2">
+            <i class="fas fa-user-tie me-1"></i>Back to HR Dashboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ total_resumes }}</h4>
+                        <p class="mb-0">Resumes Uploaded</p>
+                    </div>
+                    <i class="fas fa-file-alt fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ total_analyses }}</h4>
+                        <p class="mb-0">Analyses Done</p>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ unread_notifications }}</h4>
+                        <p class="mb-0">New Notifications</p>
+                    </div>
+                    <i class="fas fa-bell fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ jobs.count }}</h4>
+                        <p class="mb-0">Available Jobs</p>
+                    </div>
+                    <i class="fas fa-briefcase fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-file-alt me-2"></i>Recent Resumes</h5>
+            </div>
+            <div class="card-body">
+                {% if resumes %}
+                    {% for resume in resumes %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ resume.resume_file.name|truncatechars:30 }}</strong>
+                                <br><small class="text-muted">{{ resume.uploaded_at|date:"M d, Y" }}</small>
+                            </div>
+                            {% if not is_hr_viewing %}
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-chart-line me-1"></i>Analyze
+                                </button>
+                                <ul class="dropdown-menu">
+                                    {% for job in jobs %}
+                                        <li><a class="dropdown-item" href="{% url 'analyze_resume' resume.id job.id %}">{{ job.title|truncatechars:25 }}</a></li>
+                                    {% empty %}
+                                        <li><span class="dropdown-item-text text-muted">No jobs available</span></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% else %}
+                            <div>
+                                <span class="badge bg-info">Sample Resume</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                    <div class="text-center mt-3">
+                        <a href="{% url 'resume_history' %}" class="btn btn-sm btn-outline-primary me-2">View All</a>
+                        {% if not is_hr_viewing %}
+                        <a href="{% url 'upload_resume' %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus me-1"></i>Upload New
+                        </a>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">
+                        {% if is_hr_viewing %}
+                            Sample resumes from candidates would appear here.
+                        {% else %}
+                            No resumes uploaded yet.
+                        {% endif %}
+                    </p>
+                    <div class="text-center">
+                        <a href="{% url 'upload_resume' %}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>
+                            {% if is_hr_viewing %}Upload Test Resume{% else %}Upload Your First Resume{% endif %}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line me-2"></i>Recent Analyses</h5>
+            </div>
+            <div class="card-body">
+                {% if analyses %}
+                    {% for analysis in analyses %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ analysis.job.title|truncatechars:25 }}</strong>
+                                <br><small class="text-muted">Match: {{ analysis.match_score }}%</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-{% if analysis.match_score >= 80 %}success{% elif analysis.match_score >= 60 %}warning{% else %}danger{% endif %}">
+                                    {{ analysis.get_readiness_level_display }}
+                                </span>
+                                <a href="{% url 'analysis_result' analysis.id %}" class="btn btn-sm btn-outline-primary ms-2">View</a>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No analyses yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-briefcase me-2"></i>Available Jobs</h5>
+            </div>
+            <div class="card-body">
+                {% if jobs %}
+                    <div class="row">
+                        {% for job in jobs %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card border">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ job.title }}</h6>
+                                        <p class="card-text">{{ job.description|truncatechars:100 }}</p>
+                                        <small class="text-muted">Posted by: {{ job.hr.get_full_name|default:job.hr.username }}</small>
+                                        <br><small class="text-muted">{{ job.created_at|date:"M d, Y" }}</small>
+                                        {% if resumes %}
+                                            <div class="mt-2">
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        <i class="fas fa-chart-line me-1"></i>Analyze
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        {% for resume in resumes %}
+                                                            <li><a class="dropdown-item" href="{% url 'analyze_resume' resume.id job.id %}">{{ resume.resume_file.name|truncatechars:25 }}</a></li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'available_jobs' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-briefcase me-2"></i>Browse All Jobs
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No jobs available at the moment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if notifications %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-bell me-2"></i>Recent Notifications</h5>
+            </div>
+            <div class="card-body">
+                {% for notification in notifications %}
+                    <div class="alert alert-info alert-dismissible">
+                        {{ notification.message|truncatechars:100 }}
+                        <small class="d-block text-muted">{{ notification.created_at|date:"M d, Y H:i" }}</small>
+                        <a href="{% url 'mark_notification_read' notification.id %}" class="btn btn-sm btn-outline-primary">Mark Read</a>
+                    </div>
+                {% endfor %}
+                <div class="text-center">
+                    <a href="{% url 'notifications' %}" class="btn btn-outline-primary">View All Notifications</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
