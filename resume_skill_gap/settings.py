@@ -67,8 +67,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'resume_skill_gap.wsgi.application'
 
 # Database Configuration (DB_ENGINE already set above for PyMySQL compatibility)
+import sys
 
-if DB_ENGINE == 'django.db.backends.mysql':
+# Force SQLite during build/collectstatic to avoid remote database connection errors
+if 'collectstatic' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+elif DB_ENGINE == 'django.db.backends.mysql':
     DATABASES = {
         'default': {
             'ENGINE': DB_ENGINE,
