@@ -135,6 +135,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Static files storage for production (WhiteNoise)
 if not DEBUG or IS_SERVERLESS:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    WHITENOISE_MANIFEST_STRICT = False
 
 # Cloudinary storage configuration for Vercel
 CLOUDINARY_CLOUD_NAME = config('CLOUDINARY_CLOUD_NAME', default='')
