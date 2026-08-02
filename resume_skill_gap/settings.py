@@ -15,7 +15,15 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-chang
 DEBUG = config('DEBUG', default=True, cast=bool)
 IS_SERVERLESS = config('IS_SERVERLESS', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
+ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='*').split(',') if host.strip()]
+
+if IS_SERVERLESS or os.environ.get('VERCEL') == '1':
+    if '.vercel.app' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('.vercel.app')
+
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin.strip()]
+if IS_SERVERLESS or os.environ.get('VERCEL') == '1':
+    CSRF_TRUSTED_ORIGINS.append('https://*.vercel.app')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
