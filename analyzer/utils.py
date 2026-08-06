@@ -8,44 +8,35 @@ from django.core.files.storage import default_storage
 
 def extract_text_from_pdf(file_obj):
     """Extract text from PDF file object"""
-    try:
-        pdf_reader = PyPDF2.PdfReader(file_obj)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
-    except Exception as e:
-        return f"Error extracting PDF: {str(e)}"
+    pdf_reader = PyPDF2.PdfReader(file_obj)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
+    return text
 
 
 def extract_text_from_docx(file_obj):
     """Extract text from DOCX file object"""
-    try:
-        doc = Document(file_obj)
-        text = ""
-        for paragraph in doc.paragraphs:
-            text += paragraph.text + "\n"
-        return text
-    except Exception as e:
-        return f"Error extracting DOCX: {str(e)}"
+    doc = Document(file_obj)
+    text = ""
+    for paragraph in doc.paragraphs:
+        text += paragraph.text + "\n"
+    return text
 
 
 def extract_text_from_resume(resume_file):
     """Extract text from resume file based on extension"""
     file_extension = resume_file.name.lower().split('.')[-1]
     
-    try:
-        # Open the file context using Django's FieldFile interface, which works
-        # dynamically with both local storage and remote cloud storage (e.g. S3/Cloudinary)
-        with resume_file.open('rb') as file_obj:
-            if file_extension == 'pdf':
-                return extract_text_from_pdf(file_obj)
-            elif file_extension == 'docx':
-                return extract_text_from_docx(file_obj)
-            else:
-                return "Unsupported file format"
-    except Exception as e:
-        return f"Error opening resume file: {str(e)}"
+    # Open the file context using Django's FieldFile interface, which works
+    # dynamically with both local storage and remote cloud storage (e.g. S3/Cloudinary)
+    with resume_file.open('rb') as file_obj:
+        if file_extension == 'pdf':
+            return extract_text_from_pdf(file_obj)
+        elif file_extension == 'docx':
+            return extract_text_from_docx(file_obj)
+        else:
+            raise ValueError(f"Unsupported file format: .{file_extension}")
 
 
 def clean_text(text):
