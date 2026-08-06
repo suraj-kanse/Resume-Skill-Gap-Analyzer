@@ -11,6 +11,7 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 from django.contrib.auth.models import User
 import json
+import logging
 import os
 import re
 import threading
@@ -33,6 +34,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Initialize a global thread pool executor for background analysis tasks
 analysis_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="analysis_worker")
+
+logger = logging.getLogger(__name__)
 
 
 def process_analysis_async(analysis_id):
@@ -62,6 +65,7 @@ def process_analysis_async(analysis_id):
         analysis.status = 'COMPLETED'
         analysis.save()
     except Exception as e:
+        logger.exception("Error during asynchronous analysis processing for ID %s", analysis_id)
         try:
             analysis = SkillAnalysis.objects.get(id=analysis_id)
             analysis.status = 'FAILED'
@@ -72,8 +76,8 @@ def process_analysis_async(analysis_id):
             analysis.match_score = 0
             analysis.readiness_level = 'BEGINNER'
             analysis.save()
-        except:
-            pass
+        except Exception as rollback_err:
+            logger.error("Failed to save FAILED status for analysis ID %s: %s", analysis_id, rollback_err)
     finally:
         connection.close()
 
