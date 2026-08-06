@@ -29,6 +29,10 @@ from .utils import (
     determine_readiness_level, parse_skills_from_string, format_skills_list,
     get_skill_suggestions
 )
+from concurrent.futures import ThreadPoolExecutor
+
+# Initialize a global thread pool executor for background analysis tasks
+analysis_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="analysis_worker")
 
 
 def process_analysis_async(analysis_id):
@@ -278,12 +282,10 @@ def analyze_resume(request, resume_id, job_id):
             # Run synchronously on serverless to avoid frozen threads
             process_analysis_async(analysis.id)
         else:
-            # Run asynchronously on traditional server
+            # Run asynchronously on traditional server using a managed thread pool
             analysis.status = 'PENDING'
             analysis.save()
-            thread = threading.Thread(target=process_analysis_async, args=(analysis.id,))
-            thread.daemon = True
-            thread.start()
+            analysis_executor.submit(process_analysis_async, analysis.id)
         
     return redirect('analysis_result', analysis_id=analysis.id)
 
