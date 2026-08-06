@@ -714,6 +714,25 @@ def analytics(request):
     avg_gap = analyses.aggregate(Avg('gap_percentage'))['gap_percentage__avg'] or 0
     avg_match = analyses.aggregate(Avg('match_score'))['match_score__avg'] or 0
     
+    # Calculate readiness level counts and percentages dynamically
+    readiness_counts = {
+        'HIGHLY_COMPATIBLE': 0,
+        'JOB_READY': 0,
+        'INTERMEDIATE': 0,
+        'BEGINNER': 0,
+    }
+    for r in analyses:
+        if r.readiness_level in readiness_counts:
+            readiness_counts[r.readiness_level] += 1
+            
+    readiness_percentages = {}
+    for level, count in readiness_counts.items():
+        pct = (count / total_resumes * 100) if total_resumes > 0 else 0
+        readiness_percentages[level] = {
+            'count': count,
+            'percentage': round(pct, 1)
+        }
+    
     # Top missing skills
     all_missing_skills = []
     for analysis in analyses:
@@ -744,6 +763,7 @@ def analytics(request):
         'avg_match': round(avg_match, 2),
         'top_missing_skills': top_missing_skills,
         'job_stats': job_stats,
+        'readiness_percentages': readiness_percentages,
     }
     
     return render(request, 'hr/analytics.html', context)

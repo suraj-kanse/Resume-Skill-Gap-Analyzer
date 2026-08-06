@@ -68,8 +68,8 @@
                                         <td>{{ count }}</td>
                                         <td>
                                             <div class="progress" style="height: 15px;">
-                                                <div class="progress-bar bg-danger" style="width: {{ count|percentage:10 }}%">
-                                                    High
+                                                <div class="progress-bar bg-danger" style="width: {{ count|percentage:total_resumes }}%">
+                                                    {{ count|percentage:total_resumes }}%
                                                 </div>
                                             </div>
                                         </td>
@@ -91,44 +91,53 @@
                 <h5><i class="fas fa-chart-pie me-2"></i>Readiness Level Distribution</h5>
             </div>
             <div class="card-body">
-                    <div class="readiness-chart">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-circle text-success me-2"></i>Highly Compatible</span>
-                                <span class="badge bg-success">25%</span>
-                            </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar bg-success" style="width: 25%"></div>
-                            </div>
+                <div class="row align-items-center">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div style="max-height: 200px; position: relative;">
+                            <canvas id="readinessChart"></canvas>
                         </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-circle text-info me-2"></i>Job Ready</span>
-                                <span class="badge bg-info">35%</span>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="readiness-chart">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-circle text-success me-2"></i>Highly Compatible</span>
+                                    <span class="badge bg-success">{{ readiness_percentages.HIGHLY_COMPATIBLE.percentage }}% ({{ readiness_percentages.HIGHLY_COMPATIBLE.count }})</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-success" style="width: {{ readiness_percentages.HIGHLY_COMPATIBLE.percentage }}%"></div>
+                                </div>
                             </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar bg-info" style="width: 35%"></div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-circle text-info me-2"></i>Job Ready</span>
+                                    <span class="badge bg-info">{{ readiness_percentages.JOB_READY.percentage }}% ({{ readiness_percentages.JOB_READY.count }})</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-info" style="width: {{ readiness_percentages.JOB_READY.percentage }}%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-circle text-warning me-2"></i>Intermediate</span>
-                                <span class="badge bg-warning">25%</span>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-circle text-warning me-2"></i>Intermediate</span>
+                                    <span class="badge bg-warning">{{ readiness_percentages.INTERMEDIATE.percentage }}% ({{ readiness_percentages.INTERMEDIATE.count }})</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-warning" style="width: {{ readiness_percentages.INTERMEDIATE.percentage }}%"></div>
+                                </div>
                             </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar bg-warning" style="width: 25%"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-circle text-danger me-2"></i>Beginner</span>
-                                <span class="badge bg-danger">15%</span>
-                            </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar bg-danger" style="width: 15%"></div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-circle text-danger me-2"></i>Beginner</span>
+                                    <span class="badge bg-danger">{{ readiness_percentages.BEGINNER.percentage }}% ({{ readiness_percentages.BEGINNER.count }})</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-danger" style="width: {{ readiness_percentages.BEGINNER.percentage }}%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
             </div>
         </div>
     </div>
@@ -204,4 +213,45 @@
         </div>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Readiness Level Chart
+        const readinessCtx = document.getElementById('readinessChart').getContext('2d');
+        new Chart(readinessCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Highly Compatible', 'Job Ready', 'Intermediate', 'Beginner'],
+                datasets: [{
+                    data: [
+                        {{ readiness_percentages.HIGHLY_COMPATIBLE.count|default:0 }},
+                        {{ readiness_percentages.JOB_READY.count|default:0 }},
+                        {{ readiness_percentages.INTERMEDIATE.count|default:0 }},
+                        {{ readiness_percentages.BEGINNER.count|default:0 }}
+                    ],
+                    backgroundColor: [
+                        '#198754', // success
+                        '#0dcaf0', // info
+                        '#ffc107', // warning
+                        '#dc3545'  // danger
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    });
+</script>
 {% endblock %}
