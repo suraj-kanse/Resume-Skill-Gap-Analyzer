@@ -1,11 +1,19 @@
 {
   "version": 2,
   "outputDirectory": "staticfiles",
-  "functions": {
-    "resume_skill_gap/wsgi.py": {
-      "runtime": "vercel-python@3.9"
+  "builds": [
+    {
+      "src": "resume_skill_gap/wsgi.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "build_files.sh",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "staticfiles"
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/static/(.*)",
