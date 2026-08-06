@@ -94,7 +94,11 @@
                 <div class="row align-items-center">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <div style="max-height: 200px; position: relative;">
-                            <canvas id="readinessChart"></canvas>
+                            <canvas id="readinessChart" 
+                                    data-highly-compatible="{{ readiness_percentages.HIGHLY_COMPATIBLE.count|default:0 }}"
+                                    data-job-ready="{{ readiness_percentages.JOB_READY.count|default:0 }}"
+                                    data-intermediate="{{ readiness_percentages.INTERMEDIATE.count|default:0 }}"
+                                    data-beginner="{{ readiness_percentages.BEGINNER.count|default:0 }}"></canvas>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -219,39 +223,41 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Readiness Level Chart
-        const readinessCtx = document.getElementById('readinessChart').getContext('2d');
-        new Chart(readinessCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Highly Compatible', 'Job Ready', 'Intermediate', 'Beginner'],
-                datasets: [{
-                    data: [
-                        {{ readiness_percentages.HIGHLY_COMPATIBLE.count|default:0 }},
-                        {{ readiness_percentages.JOB_READY.count|default:0 }},
-                        {{ readiness_percentages.INTERMEDIATE.count|default:0 }},
-                        {{ readiness_percentages.BEGINNER.count|default:0 }}
-                    ],
-                    backgroundColor: [
-                        '#198754', // success
-                        '#0dcaf0', // info
-                        '#ffc107', // warning
-                        '#dc3545'  // danger
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
+        const readinessEl = document.getElementById('readinessChart');
+        if (readinessEl) {
+            const highlyCompatible = parseInt(readinessEl.getAttribute('data-highly-compatible')) || 0;
+            const jobReady = parseInt(readinessEl.getAttribute('data-job-ready')) || 0;
+            const intermediate = parseInt(readinessEl.getAttribute('data-intermediate')) || 0;
+            const beginner = parseInt(readinessEl.getAttribute('data-beginner')) || 0;
+
+            const readinessCtx = readinessEl.getContext('2d');
+            new Chart(readinessCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Highly Compatible', 'Job Ready', 'Intermediate', 'Beginner'],
+                    datasets: [{
+                        data: [highlyCompatible, jobReady, intermediate, beginner],
+                        backgroundColor: [
+                            '#198754', // success
+                            '#0dcaf0', // info
+                            '#ffc107', // warning
+                            '#dc3545'  // danger
+                        ],
+                        borderWidth: 1
+                    }]
                 },
-                cutout: '70%'
-            }
-        });
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
